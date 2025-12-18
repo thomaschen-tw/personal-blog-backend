@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  postgres-demo:
+    image: postgres:15-alpine
+    container_name: demo-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: demo
+    ports:
+      - "5433:5432"   # 宿主机的 5433 映射到容器的 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
