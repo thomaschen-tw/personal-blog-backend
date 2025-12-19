@@ -1,3 +1,9 @@
+
+---
+
+## 修改后的 `main.py`
+
+```python
 # backend/app/main.py
 from fastapi import FastAPI, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -70,3 +76,36 @@ def search_posts(q: str = Query(..., min_length=1), db: Session = Depends(get_db
         {"id": p.id, "title": p.title, "content": p.content[:200], "tags": p.tags}
         for p in results
     ]
+```
+
+---
+
+## 改动说明
+1. **数据库连接**：和 `seed_db.py` 保持一致，使用 `postgresql://demo:demo@localhost:5433/demo`。
+2. **依赖注入**：增加 `get_db()`，保证每次请求都能获取并关闭数据库连接。
+3. **文章接口**：`/api/posts` 和 `/api/posts/{id}` 改为真正从数据库查询，而不是返回模拟数据。
+4. **搜索接口**：新增 `/api/search?q=xxx`，支持 `title` 和 `content` 的模糊匹配。
+5. **返回内容**：为了避免返回过长的正文，搜索和列表接口只返回前 200 字摘要。
+
+---
+
+## 测试步骤
+1. 启动数据库：
+   ```bash
+   docker-compose up -d
+   ```
+2. 运行种子脚本：
+   ```bash
+   python backend/scripts/seed_db.py
+   ```
+3. 启动后端：
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+4. 测试接口：
+   - 健康检查: `http://localhost:8000/api/health`
+   - 获取文章列表: `http://localhost:8000/api/posts`
+   - 获取单篇文章: `http://localhost:8000/api/posts/1`
+   - 搜索文章: `http://localhost:8000/api/search?q=demo`
+
+---
