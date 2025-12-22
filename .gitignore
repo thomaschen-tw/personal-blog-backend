@@ -13,3 +13,6 @@ __pycache__/
 # Cache
 .mypy_cache/
 .pytest_cache/
+
+# Local secrets for running act locally - do NOT commit
+.secrets

@@ -10,17 +10,6 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: demo
-          POSTGRES_PASSWORD: demo
-          POSTGRES_DB: demo
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd pg_isready --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,30 +23,32 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest
-          pip install httpx
+          pip install pytest httpx psycopg2-binary
 
-      - name: Wait for Postgres
+      - name: Start Postgres container
+        run: |
+          docker run -d --name ci-postgres -e POSTGRES_USER=demo -e POSTGRES_PASSWORD=demo -e POSTGRES_DB=demo -p 5433:5432 postgres:15
+
+      - name: Wait for Postgres (container)
         run: |
           python - <<PY
-import time, sys
-import psycopg2
-for i in range(30):
-    try:
-        conn = psycopg2.connect(dbname="demo", user="demo", password="demo", host="localhost", port=5433)
-        conn.close()
-        print("postgres is ready")
-        sys.exit(0)
-    except Exception as e:
-        print("waiting for postgres...", e)
-        time.sleep(1)
-print("postgres did not start in time")
-sys.exit(1)
-PY
+          import time, sys
+          import psycopg2
+          for i in range(60):
+              try:
+                  conn = psycopg2.connect(dbname="demo", user="demo", password="demo", host="localhost", port=5433)
+                  conn.close()
+                  print("postgres is ready")
+                  sys.exit(0)
+              except Exception as e:
+                  print("waiting for postgres...", e)
+                  time.sleep(1)
+          print("postgres did not start in time")
+          sys.exit(1)
+          PY
 
       - name: Run pytest
-        run: |
-          pytest -q
+        run: pytest -q
 
   build_and_publish:
     name: Build and publish Docker image
@@ -88,18 +79,20 @@ PY
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile
+          file: ./backend/Dockerfile   # 如果 Dockerfile 在 backend 目录
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
             ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
 
+      - name: Save image ref
+        run: echo "ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}" > image-ref.txt
+
       - name: Upload image ref
         uses: actions/upload-artifact@v4
         with:
           name: image-tags
-          path: |
-            image-ref.txt
+          path: image-ref.txt
 
   deploy:
     name: Optional SSH deploy
@@ -118,19 +111,10 @@ PY
           port: ${{ secrets.SSH_PORT }}
           script: |
             docker pull ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
-            # If you're using docker-compose on the server, adjust path and service name
             if [ -f docker-compose.yaml ]; then
               docker-compose pull || true
               docker-compose up -d --remove-orphans
             else
-              docker stop app || true || true
-              docker rm app || true || true
+              docker stop app || true
+              docker rm app || true
               docker run -d --name app -p 8000:8000 ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
-
-# Notes:
-# - This workflow runs tests, builds a Docker image from `backend/Dockerfile`,
-#   and pushes the image to the GitHub Container Registry (GHCR).
-# - Optional deployment via SSH is executed only when `SSH_HOST` secret is set.
-#   Provide `SSH_USER`, `SSH_PRIVATE_KEY`, and `SSH_PORT` as secrets to enable.
-# - The GHCR push uses `GITHUB_TOKEN` (no extra secret required). If you prefer
-#   Docker Hub, add `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` and swap the login/build steps.
