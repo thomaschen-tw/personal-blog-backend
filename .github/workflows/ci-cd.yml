@@ -1,4 +1,4 @@
-name: CI / Build / Deploy
+name: CI / Build
 
 on:
   push:
@@ -57,7 +57,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -79,42 +78,17 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile   # 如果 Dockerfile 在 backend 目录
+          file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
-            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/personal-blog-backend:latest
+            ghcr.io/${{ github.repository_owner }}/personal-blog-backend:${{ github.sha }}
 
       - name: Save image ref
-        run: echo "ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}" > image-ref.txt
+        run: echo "ghcr.io/${{ github.repository_owner }}/personal-blog-backend:${{ github.sha }}" > image-ref.txt
 
       - name: Upload image ref
         uses: actions/upload-artifact@v4
         with:
           name: image-tags
           path: image-ref.txt
-
-  deploy:
-    name: Optional SSH deploy
-    runs-on: ubuntu-latest
-    needs: build_and_publish
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Deploy to remote via SSH
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            docker pull ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
-            if [ -f docker-compose.yaml ]; then
-              docker-compose pull || true
-              docker-compose up -d --remove-orphans
-            else
-              docker stop app || true
-              docker rm app || true
-              docker run -d --name app -p 8000:8000 ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
