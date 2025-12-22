@@ -9,7 +9,7 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN python -m pip install --upgrade pip setuptools wheel \
     && pip install --no-cache-dir -r /app/requirements.txt
-
+RUN pip install --no-cache-dir uvicorn[standard] fastapi
 # Copy app source
 COPY ./app /app/app
 COPY ./scripts /app/scripts

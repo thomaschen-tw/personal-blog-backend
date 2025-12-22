@@ -80,7 +80,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64 # 添加多平台支持
+          platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ github.repository_owner }}/personal-blog-backend:latest
             ghcr.io/${{ github.repository_owner }}/personal-blog-backend:${{ github.sha }}
@@ -93,3 +93,10 @@ jobs:
         with:
           name: image-tags
           path: image-ref.txt
+
+      - name: Delete old package versions
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: personal-blog-backend
+          package-type: container
+          min-versions-to-keep: 3
