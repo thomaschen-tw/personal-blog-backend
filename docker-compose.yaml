@@ -14,5 +14,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  backend:
+    image: ghcr.io/thomaschen-tw/personal-blog-backend:latest
+    container_name: blog-backend
+    restart: always
+    depends_on:
+      - postgres-demo
+    ports:
+      - "8000:8000"   # 宿主机的 8000 映射到容器的 8000
+    environment:
+      # 注意这里的 host 用服务名 postgres-demo，而不是 localhost
+      DATABASE_URL: postgresql://demo:demo@postgres-demo:5432/demo
+
 volumes:
   postgres_data:

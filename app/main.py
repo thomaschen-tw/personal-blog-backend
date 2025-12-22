@@ -6,9 +6,10 @@ from sqlalchemy.orm import sessionmaker, Session
 from typing import List, Optional
 from app.model import Base, Article
 from datetime import datetime
+import os
 
 # 数据库连接配置（和 seed_db.py 保持一致）
-DATABASE_URL = "postgresql://demo:demo@localhost:5433/demo"
+DATABASE_URL =  os.getenv("DATABASE_URL", "postgresql://demo:demo@localhost:5433/demo")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
