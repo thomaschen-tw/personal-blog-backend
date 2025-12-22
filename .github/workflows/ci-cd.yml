@@ -78,8 +78,8 @@ jobs:
       - name: Build and push image to GHCR
         uses: docker/build-push-action@v4
         with:
-          context: ./backend
-          file: ./backend/Dockerfile   # 如果 Dockerfile 在 backend 目录
+          context: .
+          file: ./Dockerfile   # 如果 Dockerfile 在 backend 目录
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
