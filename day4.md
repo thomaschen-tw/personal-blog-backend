@@ -35,7 +35,41 @@
 
 ---
 ## 🗓️ Day4.3：编写测试用例
-- 针对数据库参数和接口编写测试用例
+- 针对数据库参数和接口编写测试用例（使用 `pytest`）。
+- 编写了三类测试：
+  - `tests/test_seed_db.py`：针对 `scripts/seed_db.py` 中的 `generate_slug` 函数编写纯函数测试，避免依赖数据库。
+  - `tests/test_settings_json.py`：校验 `.vscode/settings.json` 中的 pytest 配置（存在时才校验）。
+  - `tests/test_main.py`：对 `app/main.py` 多个接口编写集成风格测试，使用 `app.dependency_overrides` 注入 `FakeSession` 模拟数据库，避免触发真实 DB 连接。
+
+---
+
+## 🗓️ Day4.4：CI / 容器化与自动部署
+- **目标**：每次推送代码到 GitHub 后自动运行测试、构建镜像并可选部署到远端服务器。
+
+- **主要实现**：
+  - 添加 `Dockerfile`（项目根或 `backend/Dockerfile`）用于构建运行镜像，运行命令为 `uvicorn app.main:app`。
+  - 添加 GitHub Actions workflow：`.github/workflows/ci-cd.yml`，包含三个阶段：
+    1. Run tests：安装依赖（`pip install -r requirements.txt`、`pytest`、`httpx` 等），并运行 `pytest -q`。
+    2. Build and publish：用 `docker/build-push-action` 构建镜像并推送到 GHCR（使用 `GITHUB_TOKEN`）。
+    3. Optional SSH deploy：通过 SSH 在目标服务器拉取镜像并启动容器（支持 `docker run` / `docker-compose`）。
+
+- **CI 中的 PostgreSQL 处理**：
+  - 因为 `app/main.py` 在导入时会触发 `Base.metadata.create_all(bind=engine)`，测试收集需要数据库可用；为保证 CI 独立性，workflow 在 `test` job 中直接用 `docker run` 启动一个 `postgres:15` 容器（`POSTGRES_USER=demo` / `POSTGRES_PASSWORD=demo` / `POSTGRES_DB=demo`），并通过小脚本循环尝试连接（使用 `psycopg2`）等待数据库就绪后再运行测试。
+  - 这种做法不依赖 runner 预装服务，便于在任何 GitHub-hosted runner 上复现本地环境。
+
+- **若干故障与修复记录（便于复盘）**：
+  - 修复了 workflow 中错误的路径（最初错误地使用 `backend/requirements.txt`，但仓库根即为后端，导致 CI 找不到文件）；现在使用仓库根的 `requirements.txt`。
+  - 因 FastAPI `TestClient` 需要 `httpx`，在 CI 安装步骤中加入 `pip install httpx`，避免导入时报错。
+  - 为避免在解析 SQLAlchemy 表达式时引入脆弱的断言，测试对 DB 查询使用 `FakeSession` 和 `FakeQuery` 做可控模拟；对于搜索等复杂 `ilike` 表达式，测试断言为“期望条目存在”，而不是精确匹配 SQL 行为。
+
+- **安全与 Secrets 配置**：
+  - GHCR 推送使用 `GITHUB_TOKEN`（自动可用）。
+  - 若使用 Docker Hub 请配置 `DOCKERHUB_USERNAME` 与 `DOCKERHUB_TOKEN`。
+  - 自动 SSH 部署请在仓库 Secrets 中配置 `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `SSH_PORT`。
+
+- **本地验证（Dry run）**：
+  - 在本地执行过与 CI 相同的关键步骤（安装依赖、运行 pytest），确认测试在本地通过，这是一种常见的“干运行”实践，用于在提交到 CI 前尽量减少失败。
+
 ---
 
 ## 🗓️ 生产环境思考：数据库扩展与迁移
