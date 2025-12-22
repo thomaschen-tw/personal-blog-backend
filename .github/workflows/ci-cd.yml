@@ -10,6 +10,17 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: demo
+          POSTGRES_PASSWORD: demo
+          POSTGRES_DB: demo
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,6 +36,24 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
           pip install httpx
+
+      - name: Wait for Postgres
+        run: |
+          python - <<PY
+import time, sys
+import psycopg2
+for i in range(30):
+    try:
+        conn = psycopg2.connect(dbname="demo", user="demo", password="demo", host="localhost", port=5433)
+        conn.close()
+        print("postgres is ready")
+        sys.exit(0)
+    except Exception as e:
+        print("waiting for postgres...", e)
+        time.sleep(1)
+print("postgres did not start in time")
+sys.exit(1)
+PY
 
       - name: Run pytest
         run: |
