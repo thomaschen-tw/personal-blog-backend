@@ -11,5 +11,6 @@ class Article(Base):
     title = Column(String(255), nullable=False, unique=True)
     content = Column(Text, nullable=False)
     tags = Column(String(255), nullable=True)
+    slug = Column(String(255), nullable=True, unique=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

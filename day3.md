@@ -96,16 +96,20 @@ def search_posts(q: str = Query(..., min_length=1), db: Session = Depends(get_db
    ```
 2. 运行种子脚本：
    ```bash
-   python backend/scripts/seed_db.py
+   python scripts/seed_db.py
    ```
-3. 启动后端：
+3. 进入数据库检查：
+```bash
+        docker exec -it demo-postgres psql -U demo -d demo
+   ```
+4. 启动后端：
    ```bash
    uvicorn app.main:app --reload --port 8000
    ```
-4. 测试接口：
+5. 测试接口：
    - 健康检查: `http://localhost:8000/api/health`
    - 获取文章列表: `http://localhost:8000/api/posts`
    - 获取单篇文章: `http://localhost:8000/api/posts/1`
-   - 搜索文章: `http://localhost:8000/api/search?q=demo`
+   - 搜索文章: `http://localhost:8000/api/search?q=demo` eg: article1
 
 ---
