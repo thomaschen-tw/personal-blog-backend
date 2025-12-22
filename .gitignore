@@ -9,7 +9,7 @@ __pycache__/
 
 # Environment variables
 .env
-
+.vscode
 # Cache
 .mypy_cache/
 .pytest_cache/
