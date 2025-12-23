@@ -23,7 +23,7 @@ Infra as Code Terraform：可选，写最小 plan（ECR/ECS/EKS/RDS）。
 
 ---
 
-# 📅 四周详细日程 (12/15–1/14)
+# 📅 6周详细日程
 
 ## 第1周 Day 1–5 基础骨架与搜索功能
 - **Day 1** 仓库初始化，Fork NotionNext，创建 backend skeleton，写 README。  
@@ -34,32 +34,56 @@ Infra as Code Terraform：可选，写最小 plan（ECR/ECS/EKS/RDS）。
 
 ---
 
-## 第2周 Day 6–10 K8s 本地部署与 CI 初版
+## 第2周 Day 6–10 本地 K8s 与 CI/CD 初版
 - **Day 6** 安装并配置 kind，创建本地 K8s 集群。  
-- **Day 7** 编写 K8s manifests 或 Helm chart（frontend/backend/postgres/n8n）。  
+- **Day 7** 编写 K8s manifests 或 Helm chart（frontend/backend/postgres）。  
 - **Day 8** 在 kind 上部署并调试 Ingress 或 port-forward。  
-- **Day 9** 编写 GitHub Actions：build images → push to GHCR → deploy to kind。  
+- **Day 9** 编写 GitHub Actions：前端仓库也加入 CI，build → push 镜像到 GHCR。  
 - **Day 10** 在 CI 中加入后端测试步骤，做一次代码变更触发 CI 并验证自动部署。  
 
 ---
 
-## 第3周 Day 11–15 容器化与 n8n 集成
-- **Day 11** 为 frontend/backend/postgres 写 Dockerfile。  
-- **Day 12** 搭建 docker-compose（含 n8n、mailhog），本地一键启动。  
-- **Day 13** 在 n8n 中创建 webhook 工作流：HTTP Trigger → HTTP Request to backend → DB write → Email。  
-- **Day 14** 修改后端在创建文章后调用 n8n webhook。  
-- **Day 15** 本地端到端测试并修复 CORS、网络问题，增加工作流分支逻辑（publish vs save），在前端展示工作流状态。  
+## 第3周 Day 11–15 容器化与 AWS 基础资源
+- **Day 11** 完善 Dockerfile（frontend/backend/postgres），支持多环境配置。  
+- **Day 12** 推送镜像到 AWS ECR。  
+- **Day 13** 使用 ClickOps 在 AWS ECS 部署服务，连接 RDS，配置 LB。  
+- **Day 14** 配置 Route53 域名解析，验证前端可访问。  
+- **Day 15** 本地端到端测试：文章创建 → 数据库写入 → 前端展示。  
 
 ---
 
-## 第4周 Day 16–20 云上准备与演示完善
-- **Day 16** 编写 Terraform 最小模块（只做 plan）。  
-- **Day 17** 将 CI 的 deploy 步骤扩展为可选云部署（用 env 切换）。  
-- **Day 18** 若可上云，短期部署到 ECS Fargate 或 EKS（优先 ECS 以节省时间）；否则录屏 `terraform apply` 流程。  
-- **Day 19** 配置 Route53 子域名或记录 DNS 步骤。  
-- **Day 20** 加入基本监控或健康检查，准备 PPT、演示脚本、FAQ，并彩排录制 5–8 分钟最终演示视频，整理仓库交付物。  
+## 第4周 Day 16–20 IaC 与多环境部署
+- **Day 16** 编写 Terraform 最小模块（ECR/ECS/RDS/LB/Route53），先做 `terraform plan`。  
+- **Day 17** 将 CI 的 deploy 步骤扩展为可选云部署（用 env 切换 dev/staging/prod）。  
+- **Day 18** 使用 Terraform 部署到 AWS ECS 或 EKS（优先 ECS，节省时间）。  
+- **Day 19** 配置多环境同镜像部署（不同 namespace 或 ECS service），验证环境隔离。  
+- **Day 20** 加入基本监控或健康检查，准备演示脚本。  
 
 ---
+
+## 第5周 Day 21–25 n8n 集成
+- **Day 21** 搭建 n8n（本地 docker-compose 或 K8s 部署）。  
+- **Day 22** 在 n8n 中创建 webhook 工作流：HTTP Trigger → DB write → Email。  
+- **Day 23** 修改后端在文章创建后调用 n8n webhook。  
+- **Day 24** 前端展示工作流状态（publish vs save）。  
+- **Day 25** 本地端到端测试并修复 CORS、网络问题。  
+
+---
+
+## 第6周 Day 26–30 云上 n8n 与最终交付
+- **Day 26** 将 n8n 部署到 AWS ECS/EKS，配置持久化存储。  
+- **Day 27** 在 CI/CD 中加入 n8n 部署步骤。  
+- **Day 28** 配置 n8n 与 RDS、邮件服务（如 SES/Mailhog）。  
+- **Day 29** 多环境下验证工作流（dev/staging/prod）。  
+- **Day 30** 准备 PPT、演示视频、FAQ，整理仓库交付物。  
+
+---
+
+## 📌 总结
+- **前后端分离**：两个仓库分别维护 CI/CD，镜像推送到 ECR。  
+- **主线**：文章创建 → 部署 → 上云 → 多环境 → 演示交付。  
+- **扩展**：n8n 集成作为第5–6周重点，既能展示自动化工作流，也能体现全链路。  
+
 
 # ⚠️ 常见踩坑点总结
 

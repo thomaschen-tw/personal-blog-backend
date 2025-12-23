@@ -3,8 +3,20 @@ name: CI / Build
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - '.github/workflows/**'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - '.github/workflows/**'
 
 jobs:
   test:

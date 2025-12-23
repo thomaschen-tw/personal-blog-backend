@@ -1,0 +1,35 @@
+name: Docs Check
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'README.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'README.md'
+      - 'docs/**'
+
+jobs:
+  docs:
+    name: Lint / Spellcheck Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 示例：运行 markdownlint 检查文档格式
+      - name: Install markdownlint
+        run: npm install -g markdownlint-cli
+
+      - name: Run markdownlint
+        run: markdownlint README.md docs/**/*.md || true
+
+      # 示例：运行 codespell 检查拼写错误
+      - name: Install codespell
+        run: pip install codespell
+
+      - name: Run codespell
+        run: codespell README.md docs/
