@@ -62,20 +62,16 @@ async def health():
 
 
 # 返回文章列表（从数据库查询）
-# @app.get("/api/posts")
-# def get_posts(db: Session = Depends(get_db)):
-#     posts = db.query(Article).all()
-#     return [
-#         {
-#             "id": p.id,
-#             "title": p.title,
-#             "content": p.content[:200] if p.content else "",
-#             "tags": [t.strip() for t in p.tags.split(",")] if p.tags else [],
-#             "slug": p.slug or str(p.id),
-#             "href": f"/{POST_URL_PREFIX}/{p.slug or p.id}"  # 使用 article 前缀
-#         }
-#         for p in posts
-#     ]
+@app.get("/api/posts")
+def get_posts(db: Session = Depends(get_db)):
+    """
+    获取所有文章列表
+    - 返回格式化的文章列表
+    """
+    posts = db.query(Article).order_by(Article.created_at.desc()).all()
+    return [format_post_response(p) for p in posts]
+
+
 @app.post("/api/posts")
 def create_post(post: PostCreate, db: Session = Depends(get_db)):
     """

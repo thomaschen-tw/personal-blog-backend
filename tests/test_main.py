@@ -48,6 +48,7 @@ class FakeQuery:
     def __init__(self, data):
         self._data = data
         self._condition = None
+        self._order_by = None
 
     def filter(self, condition):
         # store the SQLAlchemy condition object for later evaluation
@@ -76,18 +77,38 @@ class FakeQuery:
         self._condition = condition
         return self
 
-    def all(self):
-        if self._condition is None:
-            return list(self._data)
-        # Heuristic: if the condition contains a LIKE/ILIKE clause, fall back to
-        # returning all items so tests can assert presence of expected matches
-        # without depending on SQLAlchemy bindparam internals. This keeps tests
-        # stable and focused on route behavior/formatting rather than SQL parsing.
-        cond_text = str(self._condition).lower()
-        if "like" in cond_text or "ilike" in cond_text:
-            return list(self._data)
+    def order_by(self, order_expr):
+        """Store order_by expression for later sorting."""
+        self._order_by = order_expr
+        return self
 
-        return [a for a in self._data if _eval_condition(a, self._condition)]
+    def all(self):
+        result = []
+        if self._condition is None:
+            result = list(self._data)
+        else:
+            # Heuristic: if the condition contains a LIKE/ILIKE clause, fall back to
+            # returning all items so tests can assert presence of expected matches
+            # without depending on SQLAlchemy bindparam internals. This keeps tests
+            # stable and focused on route behavior/formatting rather than SQL parsing.
+            cond_text = str(self._condition).lower()
+            if "like" in cond_text or "ilike" in cond_text:
+                result = list(self._data)
+            else:
+                result = [a for a in self._data if _eval_condition(a, self._condition)]
+
+        # Apply ordering if specified
+        if self._order_by is not None:
+            # Check if it's a descending order (created_at.desc())
+            order_str = str(self._order_by).lower()
+            if 'desc' in order_str or '.desc()' in order_str:
+                # Sort by created_at descending
+                result.sort(key=lambda x: x.created_at if x.created_at else datetime.min, reverse=True)
+            elif 'asc' in order_str or '.asc()' in order_str:
+                # Sort by created_at ascending
+                result.sort(key=lambda x: x.created_at if x.created_at else datetime.min, reverse=False)
+
+        return result
 
     def first(self):
         items = self.all()
@@ -256,7 +277,6 @@ def test_health_endpoint():
         assert r.json() == {"status": "ok"}
 
 
-@pytest.mark.skip(reason="GET /api/posts endpoint is currently commented out in main.py")
 def test_get_posts_empty():
     """When DB has no articles, `/api/posts` returns an empty list."""
     app.dependency_overrides[get_db] = make_get_db_override([])
@@ -269,7 +289,6 @@ def test_get_posts_empty():
         app.dependency_overrides.pop(get_db, None)
 
 
-@pytest.mark.skip(reason="GET /api/posts endpoint is currently commented out in main.py")
 def test_get_posts_and_formatting():
     """Verify `/api/posts` returns expected minimal fields and formatting."""
     art = FakeArticle(
@@ -293,8 +312,10 @@ def test_get_posts_and_formatting():
             assert post["href"] == f"/{POST_URL_PREFIX}/{art.slug}"
             # tags parsed into list
             assert post["tags"] == ["demo", "example"]
-            # content trimmed to first 200 chars
-            assert len(post["content"]) == 200
+            # content should be full content (not trimmed in format_post_response)
+            assert post["content"] == art.content
+            # summary should be trimmed
+            assert len(post["summary"]) <= 203  # 200 chars + "..."
     finally:
         app.dependency_overrides.pop(get_db, None)
 
