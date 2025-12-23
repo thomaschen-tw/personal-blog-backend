@@ -7,7 +7,13 @@ from typing import List, Optional
 from app.model import Base, Article
 from datetime import datetime
 import os
+# import httpx  # Day 11: 启用 n8n webhook 时需要
+import logging
+from pydantic import BaseModel
 
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 # 数据库连接配置（和 seed_db.py 保持一致）
 DATABASE_URL =  os.getenv("DATABASE_URL", "postgresql://demo:demo@localhost:5433/demo")
 
@@ -44,7 +50,11 @@ def get_db():
 # 文章URL前缀（与前端配置保持一致）
 POST_URL_PREFIX = "article"
 
-
+class PostCreate(BaseModel):
+    title: str
+    content: str
+    tags: Optional[List[str]] = None
+    slug: Optional[str] = None
 # 健康检查接口：用于快速验证后端是否运行
 @app.get("/api/health")
 async def health():
@@ -52,21 +62,74 @@ async def health():
 
 
 # 返回文章列表（从数据库查询）
-@app.get("/api/posts")
-def get_posts(db: Session = Depends(get_db)):
-    posts = db.query(Article).all()
-    return [
-        {
-            "id": p.id,
-            "title": p.title,
-            "content": p.content[:200] if p.content else "",
-            "tags": [t.strip() for t in p.tags.split(",")] if p.tags else [],
-            "slug": p.slug or str(p.id),
-            "href": f"/{POST_URL_PREFIX}/{p.slug or p.id}"  # 使用 article 前缀
-        }
-        for p in posts
-    ]
-
+# @app.get("/api/posts")
+# def get_posts(db: Session = Depends(get_db)):
+#     posts = db.query(Article).all()
+#     return [
+#         {
+#             "id": p.id,
+#             "title": p.title,
+#             "content": p.content[:200] if p.content else "",
+#             "tags": [t.strip() for t in p.tags.split(",")] if p.tags else [],
+#             "slug": p.slug or str(p.id),
+#             "href": f"/{POST_URL_PREFIX}/{p.slug or p.id}"  # 使用 article 前缀
+#         }
+#         for p in posts
+#     ]
+@app.post("/api/posts")
+def create_post(post: PostCreate, db: Session = Depends(get_db)):
+    """
+    创建新文章
+    - 将文章保存到数据库
+    - Day 5: 先不触发 n8n webhook，等 Day 11 再启用
+    """
+    # 将 tags 列表转为字符串存储
+    tags_str = ",".join(post.tags) if post.tags else None
+    article = Article(
+        title=post.title,
+        content=post.content,
+        tags=tags_str,
+        slug=post.slug
+    )
+    db.add(article)
+    db.commit()
+    db.refresh(article)
+    
+    # 格式化响应
+    response = format_post_response(article)
+    
+    # TODO: Day 11 - 启用 n8n webhook 触发
+    # 触发 n8n webhook（如果配置了）
+    # n8n_webhook_url = os.getenv("N8N_WEBHOOK_URL")
+    # if n8n_webhook_url:
+    #     try:
+    #         # 异步调用 n8n webhook，不阻塞响应
+    #         webhook_payload = {
+    #             "post_id": article.id,
+    #             "title": article.title,
+    #             "slug": article.slug,
+    #             "action": "save",
+    #             "triggered_by": "backend",
+    #             "created_at": article.created_at.isoformat() if article.created_at else None
+    #         }
+    #         
+    #         # 使用 httpx 异步发送请求（非阻塞）
+    #         # 注意：这里使用同步 httpx 是为了简化，生产环境建议使用异步
+    #         try:
+    #             httpx.post(
+    #                 n8n_webhook_url,
+    #                 json=webhook_payload,
+    #                 timeout=5.0  # 5秒超时，避免阻塞太久
+    #             )
+    #             logger.info(f"Successfully triggered n8n webhook for post {article.id}")
+    #         except Exception as e:
+    #             # 记录错误但不影响主流程
+    #             logger.warning(f"Failed to trigger n8n webhook: {e}")
+    #     except Exception as e:
+    #         logger.error(f"Error preparing n8n webhook: {e}")
+    
+    logger.info(f"Post created successfully: id={article.id}, title={article.title}, slug={article.slug}")
+    return response
 
 # 通过 ID 获取单篇文章
 @app.get("/api/posts/{post_id}")
